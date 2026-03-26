@@ -9,33 +9,123 @@ from closeloop.logging_layer import WorkflowExecutionResult
 from closeloop.orchestrator import run_sales_workflow
 from closeloop.state import create_initial_state
 
-# Load environment variables from .env file
 load_dotenv()
 
 st.set_page_config(page_title="Closeloop", layout="wide")
-st.title("🎯 Closeloop Sales Workflow")
-st.caption("Multi-agent sales recovery automation system with structured audit logging")
+st.markdown(
+    """
+<style>
+    .stApp {
+        background-color: #0B0F14;
+        color: #E5E7EB;
+    }
 
-st.divider()
+    .main-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #E5E7EB;
+        margin-bottom: 0.25rem;
+    }
 
-# Demo mode toggle
-col_mode = st.columns([4, 1])[1]
-with col_mode:
-    use_demo = st.toggle("📋 Demo Mode", value=True, help="Use realistic mock data (no API calls)")
+    .subtitle {
+        color: #9CA3AF;
+        font-size: 1rem;
+        margin-bottom: 1.5rem;
+    }
 
-st.divider()
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #E5E7EB;
+        margin: 0 0 0.75rem 0;
+    }
 
-col_input, col_button = st.columns([3, 1])
-with col_input:
+    .card {
+        background: #121821;
+        border: 1px solid #1F2937;
+        border-radius: 14px;
+        padding: 18px 20px;
+        margin: 0 0 14px 0;
+    }
+
+    .muted {
+        color: #9CA3AF;
+    }
+
+    .risk-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        border: 1px solid transparent;
+    }
+
+    .risk-high {
+        background: rgba(239, 68, 68, 0.15);
+        color: #EF4444;
+        border-color: rgba(239, 68, 68, 0.45);
+    }
+
+    .risk-medium {
+        background: rgba(245, 158, 11, 0.15);
+        color: #F59E0B;
+        border-color: rgba(245, 158, 11, 0.45);
+    }
+
+    .risk-low {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10B981;
+        border-color: rgba(16, 185, 129, 0.45);
+    }
+
+    .summary-banner {
+        background: linear-gradient(90deg, rgba(59, 130, 246, 0.22) 0%, rgba(59, 130, 246, 0.08) 100%);
+        border: 1px solid rgba(59, 130, 246, 0.5);
+        border-radius: 14px;
+        padding: 18px 20px;
+        margin-top: 8px;
+    }
+
+    .summary-k {
+        color: #9CA3AF;
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .summary-v {
+        color: #E5E7EB;
+        font-size: 1rem;
+        font-weight: 600;
+        margin-top: 0.2rem;
+    }
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+st.markdown("<div class='main-title'>Closeloop</div>", unsafe_allow_html=True)
+st.markdown(
+    "<div class='subtitle'>Autonomous Sales Recovery System</div>",
+    unsafe_allow_html=True,
+)
+
+toolbar_left, toolbar_right = st.columns([4, 1])
+with toolbar_right:
+    use_demo = st.toggle("Demo Mode", value=True, help="Run with mock output without API calls")
+
+st.markdown("<div class='section-title'>Input</div>", unsafe_allow_html=True)
+input_col, button_col = st.columns([4, 1])
+with input_col:
     company_name = st.text_input(
-        "Company name",
-        placeholder="e.g., Acme Corp, TechStart Inc.",
+        "Company Name",
+        placeholder="Acme Corp",
         label_visibility="collapsed",
     )
-with col_button:
-    run_clicked = st.button("▶ Run Workflow", use_container_width=True)
-
-st.divider()
+with button_col:
+    run_clicked = st.button("Run Workflow", use_container_width=True)
 
 
 def get_demo_result(company_name: str) -> WorkflowExecutionResult:
@@ -104,13 +194,13 @@ def get_demo_result(company_name: str) -> WorkflowExecutionResult:
 
 if run_clicked:
     if not company_name.strip():
-        st.error("❌ Please enter a company name.")
+        st.error("Please enter a company name.")
     else:
         try:
-            with st.spinner("🔄 Analyzing and processing workflow..."):
+            with st.spinner("Running workflow..."):
                 if use_demo:
                     result = get_demo_result(company_name)
-                    st.info("📋 Running in **Demo Mode** with realistic mock data (no API calls)")
+                    st.info("Running in demo mode with mock data.")
                 else:
                     state = create_initial_state(company_name)
                     result = run_sales_workflow(state)
@@ -118,112 +208,96 @@ if run_clicked:
             final_state = result["final_state"]
             logs = result["logs"]
 
-            # STEP 1: Research
-            st.subheader("📊 Step 1 — Research")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown(f"**Industry:** `{final_state.get('industry', 'N/A')}`")
-                st.markdown(f"**Stage:** `{final_state.get('company_stage', 'N/A')}`")
-            with col2:
-                st.markdown(f"**Persona:** `{final_state.get('persona', 'N/A')}`")
-                pain_points = final_state.get("pain_points", [])
-                pain_text = ", ".join(pain_points) if pain_points else "N/A"
-                st.markdown(f"**Pain Points:** `{pain_text}`")
-
-            st.divider()
-
-            # STEP 2: Initial Outreach
-            st.subheader("✉️ Step 2 — Initial Outreach")
-            initial_email = final_state.get("initial_email", "N/A")
-            st.markdown(f"> {initial_email}")
-
-            st.divider()
-
-            # STEP 3: Engagement Status
-            st.subheader("📅 Step 3 — Engagement Status")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric(
-                    "Days Since Contact",
-                    final_state.get("last_contact_days", 0),
-                    delta=None,
-                )
-            with col2:
-                status_val = final_state.get("engagement_status", "N/A")
-                status_color = "🔴" if status_val == "NO_RESPONSE" else "🟢"
-                st.markdown(f"**Status:** {status_color} `{status_val}`")
-
-            st.divider()
-
-            # STEP 4: Risk Analysis
-            st.subheader("⚠️ Step 4 — Risk Analysis")
-            risk_level = final_state.get("risk_level", "N/A")
-            risk_colors = {
-                "HIGH": "🔴",
-                "MEDIUM": "🟡",
-                "LOW": "🟢",
+            risk_level = str(final_state.get("risk_level", "UNKNOWN")).upper()
+            risk_badge_map = {
+                "HIGH": "risk-high",
+                "MEDIUM": "risk-medium",
+                "LOW": "risk-low",
             }
-            risk_icon = risk_colors.get(risk_level, "⚫")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown(f"**Risk Level:** {risk_icon} `{risk_level}`")
-            with col2:
+            risk_badge = risk_badge_map.get(risk_level, "risk-medium")
+
+            st.markdown("<div class='section-title'>Step 1: Company Intelligence</div>", unsafe_allow_html=True)
+            st.markdown("<div class='card'>", unsafe_allow_html=True)
+            left, right = st.columns(2)
+            with left:
+                st.markdown(f"**Industry**  \\n+{final_state.get('industry', 'N/A')}")
+                st.markdown(f"**Company Stage**  \\n+{final_state.get('company_stage', 'N/A')}")
+            with right:
+                st.markdown(f"**Persona**  \\n+{final_state.get('persona', 'N/A')}")
+                st.markdown("**Pain Points**")
+                pain_points = final_state.get("pain_points", [])
+                if isinstance(pain_points, list) and pain_points:
+                    for item in pain_points:
+                        st.markdown(f"- {item}")
+                else:
+                    st.markdown("- N/A")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+            st.markdown("<div class='section-title'>Step 2: Initial Outreach</div>", unsafe_allow_html=True)
+            st.markdown("<div class='card'>", unsafe_allow_html=True)
+            st.code(str(final_state.get("initial_email", "N/A")), language="text")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+            st.markdown("<div class='section-title'>Step 3: Engagement Status</div>", unsafe_allow_html=True)
+            st.markdown("<div class='card'>", unsafe_allow_html=True)
+            left, right = st.columns(2)
+            with left:
+                st.metric("Days Since Contact", int(final_state.get("last_contact_days", 0)))
+            with right:
+                st.markdown("**Status**")
+                st.markdown(f"<span class='risk-badge {risk_badge}'>{final_state.get('engagement_status', 'N/A')}</span>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+            st.markdown("<div class='section-title'>Step 4: Risk Analysis</div>", unsafe_allow_html=True)
+            st.markdown("<div class='card'>", unsafe_allow_html=True)
+            st.markdown("<div class='muted'>RISK LEVEL</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='margin: 8px 0 12px 0;'><span class='risk-badge {risk_badge}' style='font-size: 1rem; padding: 8px 14px;'>{risk_level}</span></div>", unsafe_allow_html=True)
+            st.markdown("**Risk Reason**")
+            st.write(str(final_state.get("risk_reason", "N/A")))
+            st.markdown("</div>", unsafe_allow_html=True)
+
+            st.markdown("<div class='section-title'>Step 5: Recovery Action</div>", unsafe_allow_html=True)
+            st.markdown("<div class='card'>", unsafe_allow_html=True)
+            st.markdown(f"**Recovery Strategy**  \\n+{final_state.get('recovery_strategy', 'N/A')}")
+            st.markdown("**Recovery Email**")
+            st.code(str(final_state.get("last_email", "N/A")), language="text")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+            st.markdown("<div class='section-title'>Decision Trace</div>", unsafe_allow_html=True)
+            with st.expander("View decision trace", expanded=False):
+                for log in logs:
+                    st.markdown("<div class='card'>", unsafe_allow_html=True)
+                    st.markdown(f"**Agent**: {str(log.get('agent_name', 'N/A')).replace('_', ' ').title()}")
+                    st.markdown(f"**Input Summary**: {log.get('input_summary', '')}")
+                    st.markdown(f"**Output Summary**: {log.get('output_summary', '')}")
+                    st.markdown(f"**Reasoning**: {log.get('reasoning', '')}")
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+            st.markdown("<div class='section-title'>Final Summary</div>", unsafe_allow_html=True)
+            st.markdown("<div class='summary-banner'>", unsafe_allow_html=True)
+            left, right = st.columns(2)
+            with left:
+                st.markdown("<div class='summary-k'>Deal Status</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='summary-v'>At Risk - {risk_level}</div>", unsafe_allow_html=True)
+            with right:
+                st.markdown("<div class='summary-k'>Action Taken</div>", unsafe_allow_html=True)
                 st.markdown(
-                    f"**Risk Reason:** `{final_state.get('risk_reason', 'N/A')}`"
+                    f"<div class='summary-v'>Recovery Triggered - {final_state.get('recovery_strategy', 'N/A')}</div>",
+                    unsafe_allow_html=True,
                 )
+            st.markdown("</div>", unsafe_allow_html=True)
 
-            st.divider()
-
-            # STEP 5: Recovery Action
-            st.subheader("🚀 Step 5 — Recovery Action")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown(
-                    f"**Strategy:** `{final_state.get('recovery_strategy', 'N/A')}`"
-                )
-            with col2:
-                pass
-            last_email = final_state.get("last_email", "N/A")
-            st.markdown("**Follow-up Email:**")
-            st.markdown(f"> {last_email}")
-
-            st.divider()
-
-            # DECISION TRACE: Logs
-            st.subheader("🔍 Decision Trace")
-            with st.expander("View detailed agent decisions and reasoning", expanded=True):
-                for idx, log in enumerate(logs, start=1):
-                    st.markdown(f"**Agent {idx}: {log['agent_name'].replace('_', ' ').title()}**")
-                    st.markdown(f"*Input:* {log['input_summary']}")
-                    st.markdown(f"*Decision:* {log['output_summary']}")
-                    st.markdown(f"*Reasoning:* {log['reasoning']}")
-                    st.markdown("---")
-
-            st.divider()
-
-            # FINAL SUMMARY
-            st.subheader("📋 Final Summary")
-            col1, col2 = st.columns(2)
-            with col1:
-                status_emoji = "🔴" if risk_level == "HIGH" else "🟡" if risk_level == "MEDIUM" else "🟢"
-                st.markdown(f"**Deal Status:** {status_emoji} `At Risk - {risk_level}`")
-            with col2:
-                st.markdown(
-                    f"**Action Taken:** `Recovery Triggered - {final_state.get('recovery_strategy', 'N/A')}`"
-                )
-
-            st.success("✅ Workflow completed successfully!")
+            st.success("Workflow completed successfully.")
 
         except Exception as e:
             error_msg = str(e)
-            st.error(f"❌ Workflow error: {error_msg[:200]}")
-            
+            st.error(f"Workflow error: {error_msg[:220]}")
+
             if "quota" in error_msg.lower() or "429" in error_msg:
                 st.warning(
-                    "⚠️ **API Quota Exceeded** — The free-tier Gemini API has reached its limit.\n\n"
-                    "**Solution:** Toggle **📋 Demo Mode** at the top to see the full workflow with realistic mock data (no API calls required)."
+                    "API quota exceeded. Enable Demo Mode to continue the walkthrough without external API calls."
                 )
             else:
                 st.info(
-                    "💡 **Tip:** Ensure `GEMINI_API_KEY` is set in `.env` file for live mode, or use Demo Mode above."
+                    "For live mode, verify GEMINI_API_KEY in .env. You can also use Demo Mode."
                 )

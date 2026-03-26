@@ -5,11 +5,13 @@ A multi-agent sales workflow system for close-loop recovery automation with stru
 ## Project Structure
 
 ### Core
+
 - `src/closeloop/state.py`: shared SalesWorkflowState schema and initializer.
 - `src/closeloop/orchestrator.py`: sequential workflow pipeline with per-agent logging.
 - `src/closeloop/logging_layer.py`: structured audit log types (AgentLogEntry, WorkflowExecutionResult).
 
 ### Agents (Phases 2–6)
+
 - `src/closeloop/agents/research_agent.py`: Gemini-powered research (company context, persona, pain points).
 - `src/closeloop/agents/outreach_agent.py`: Gemini-powered cold outreach email generation with 2-attempt retry.
 - `src/closeloop/agents/monitoring_module.py`: deterministic inactivity detection (10-day threshold).
@@ -17,6 +19,7 @@ A multi-agent sales workflow system for close-loop recovery automation with stru
 - `src/closeloop/agents/recovery_agent.py`: Gemini-powered risk-adaptive recovery email strategies.
 
 ### Application & Tests
+
 - `app.py`: Phase 8 Streamlit demo with full workflow visualization and decision trace.
 - `tests/test_phase1_structure.py`: structure validation with mocked agents (no API required).
 
@@ -29,7 +32,7 @@ A multi-agent sales workflow system for close-loop recovery automation with stru
 ✅ **Phase 5**: Risk detection agent (rule-based classification).  
 ✅ **Phase 6**: Recovery agent (Gemini with strict validation and email differentiation).  
 ✅ **Phase 7**: Logging layer and orchestrator pipeline (sequential execution with per-agent audit trails).  
-✅ **Phase 8**: Streamlit demo layer with clear workflow visualization (judges version).  
+✅ **Phase 8**: Streamlit demo layer with clear workflow visualization (judges version).
 
 ## Architecture Overview
 
@@ -55,12 +58,14 @@ UI: Streamlit demo displays all 5 steps + decision trace + final summary.
 ## Environment Setup
 
 ### Requirements
+
 - Python 3.13+
 - `google-generativeai` SDK
 - `pytest` for testing
 - Streamlit for demo UI
 
 ### Configuration
+
 ```bash
 # Set Gemini API key
 export GEMINI_API_KEY=your_api_key_here
@@ -124,16 +129,19 @@ print("Audit Logs:\n", result["logs"])
 ## Demo Quick Start
 
 1. **Set API Key** (if running with real Gemini):
+
    ```bash
    export GEMINI_API_KEY=sk-...
    ```
 
 2. **Start Streamlit App**:
+
    ```bash
    streamlit run app.py
    ```
 
 3. **Enter Company Name** (e.g., "Stripe", "OpenAI", "Acme Corp"):
+
    ```
    Enter → Click "Run Workflow"
    ```
