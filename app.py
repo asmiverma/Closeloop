@@ -5,6 +5,7 @@ import os
 import streamlit as st
 from dotenv import load_dotenv
 
+from closeloop.logging_layer import WorkflowExecutionResult
 from closeloop.orchestrator import run_sales_workflow
 from closeloop.state import create_initial_state
 
@@ -14,6 +15,13 @@ load_dotenv()
 st.set_page_config(page_title="Closeloop", layout="wide")
 st.title("🎯 Closeloop Sales Workflow")
 st.caption("Multi-agent sales recovery automation system with structured audit logging")
+
+st.divider()
+
+# Demo mode toggle
+col_mode = st.columns([4, 1])[1]
+with col_mode:
+    use_demo = st.toggle("📋 Demo Mode", value=True, help="Use realistic mock data (no API calls)")
 
 st.divider()
 
@@ -29,14 +37,83 @@ with col_button:
 
 st.divider()
 
+
+def get_demo_result(company_name: str) -> WorkflowExecutionResult:
+    """Return realistic mock workflow result for demo purposes."""
+    industry_map = {
+        "stripe": "Fintech",
+        "acme": "Manufacturing",
+        "techstart": "SaaS",
+        "openai": "AI/ML",
+    }
+    industry = industry_map.get(company_name.lower().split()[0], "Enterprise Software")
+
+    return {
+        "final_state": {
+            "company_name": company_name,
+            "industry": industry,
+            "company_stage": "Series B",
+            "persona": "Head of Operations",
+            "pain_points": [
+                "inefficient sales workflows",
+                "lost deals due to poor follow-up",
+                "manual email tracking",
+            ],
+            "initial_email": f"Hi there! We help companies like {company_name} streamline their sales recovery process. Our AI-powered system automatically identifies at-risk deals and triggers targeted recovery campaigns.",
+            "last_email": f"Quick follow-up on our conversation about improving {company_name}'s sales recovery rate. We've seen similar companies reduce deal loss by 40% with our system.",
+            "last_contact_days": 10,
+            "engagement_status": "NO_RESPONSE",
+            "risk_level": "HIGH",
+            "risk_reason": "No response after 10 days of initial contact",
+            "recovery_strategy": "Send urgency-driven follow-up with case study proof",
+        },
+        "logs": [
+            {
+                "agent_name": "research_agent",
+                "input_summary": f"company_name={company_name}",
+                "output_summary": f"industry={industry}, company_stage=Series B, persona=Head of Operations, pain_points=3",
+                "reasoning": "Generated structured company context from company name using industry patterns.",
+            },
+            {
+                "agent_name": "outreach_agent",
+                "input_summary": "persona=Head of Operations, pain_points=3, industry=Enterprise Software",
+                "output_summary": "initial_email_words=42, last_email_words=38",
+                "reasoning": "Generated personalized outreach email addressing specific pain points with value proposition.",
+            },
+            {
+                "agent_name": "monitoring_module",
+                "input_summary": "last_email_words=38",
+                "output_summary": "last_contact_days=10, engagement_status=NO_RESPONSE",
+                "reasoning": "Applied deterministic inactivity simulation: 10 days passed without response.",
+            },
+            {
+                "agent_name": "risk_detection_agent",
+                "input_summary": "last_contact_days=10, engagement_status=NO_RESPONSE",
+                "output_summary": "risk_level=HIGH, risk_reason=No response after 10 days",
+                "reasoning": "Classified as HIGH risk: >7 days without engagement indicates cooling deal.",
+            },
+            {
+                "agent_name": "recovery_agent",
+                "input_summary": "risk_level=HIGH, risk_reason=No response after 10 days, last_email_words=38",
+                "output_summary": "recovery_strategy=Send urgency-driven follow-up with case study proof, last_email_words=42",
+                "reasoning": "Generated HIGH-risk recovery strategy: urgent follow-up with social proof to re-engage.",
+            },
+        ],
+    }
+
+
 if run_clicked:
     if not company_name.strip():
         st.error("❌ Please enter a company name.")
     else:
         try:
             with st.spinner("🔄 Analyzing and processing workflow..."):
-                state = create_initial_state(company_name)
-                result = run_sales_workflow(state)
+                if use_demo:
+                    result = get_demo_result(company_name)
+                    st.info("📋 Running in **Demo Mode** with realistic mock data (no API calls)")
+                else:
+                    state = create_initial_state(company_name)
+                    result = run_sales_workflow(state)
 
             final_state = result["final_state"]
             logs = result["logs"]
@@ -138,7 +215,15 @@ if run_clicked:
             st.success("✅ Workflow completed successfully!")
 
         except Exception as e:
-            st.error(f"❌ Workflow error: {str(e)}")
-            st.info(
-                "💡 Tip: Ensure `GEMINI_API_KEY` environment variable is set for full functionality."
-            )
+            error_msg = str(e)
+            st.error(f"❌ Workflow error: {error_msg[:200]}")
+            
+            if "quota" in error_msg.lower() or "429" in error_msg:
+                st.warning(
+                    "⚠️ **API Quota Exceeded** — The free-tier Gemini API has reached its limit.\n\n"
+                    "**Solution:** Toggle **📋 Demo Mode** at the top to see the full workflow with realistic mock data (no API calls required)."
+                )
+            else:
+                st.info(
+                    "💡 **Tip:** Ensure `GEMINI_API_KEY` is set in `.env` file for live mode, or use Demo Mode above."
+                )
