@@ -9,6 +9,15 @@ import google.generativeai as genai
 from closeloop.state import SalesWorkflowState
 
 
+DEFAULT_MODEL_CANDIDATES = [
+    "gemini-1.5-flash",
+    "gemini-2.0-flash",
+    "gemini-2.5-flash",
+    "gemini-flash-latest",
+    "gemini-pro-latest",
+]
+
+
 def run_research_agent(state: SalesWorkflowState) -> SalesWorkflowState:
     """Populate structured research context for the provided company name.
 
@@ -23,7 +32,8 @@ def run_research_agent(state: SalesWorkflowState) -> SalesWorkflowState:
         raise EnvironmentError("GEMINI_API_KEY environment variable is not set.")
 
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model_name = _resolve_model_name()
+    model = genai.GenerativeModel(model_name)
 
     prompt = (
         "Return ONLY valid JSON with keys: industry, company_stage, persona, pain_points. "
@@ -43,6 +53,33 @@ def run_research_agent(state: SalesWorkflowState) -> SalesWorkflowState:
     state["persona"] = parsed["persona"]
     state["pain_points"] = parsed["pain_points"]
     return state
+
+
+def _resolve_model_name() -> str:
+    configured = os.getenv("GEMINI_MODEL", "").strip()
+    candidates = [configured] if configured else []
+    for candidate in DEFAULT_MODEL_CANDIDATES:
+        if candidate not in candidates:
+            candidates.append(candidate)
+
+    try:
+        available = {
+            model.name.removeprefix("models/")
+            for model in genai.list_models()
+            if "generateContent" in getattr(model, "supported_generation_methods", [])
+        }
+    except Exception:
+        # If discovery fails, keep deterministic fallback behavior.
+        return candidates[0]
+
+    for candidate in candidates:
+        if candidate in available:
+            return candidate
+
+    raise ValueError(
+        "No compatible Gemini model found for generateContent. "
+        "Set GEMINI_MODEL to a supported model name."
+    )
 
 
 def _parse_research_json(raw_text: str) -> dict[str, Any]:
