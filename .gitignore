@@ -1,0 +1,40 @@
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Test and coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Tooling caches
+.mypy_cache/
+.ruff_cache/
+
+# IDE and editor settings
+.vscode/
+.idea/
+
+# Environment files
+.env
+.env.*
+
+# Streamlit local config
+.streamlit/secrets.toml
+
+# OS files
+.DS_Store
+Thumbs.db
