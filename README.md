@@ -1,131 +1,116 @@
 # Closeloop
 
-Closeloop is an autonomous sales recovery system that detects at-risk opportunities, classifies deal risk, and generates targeted recovery actions with full decision traceability.
+Closeloop is an autonomous closed-loop sales recovery system.
 
-## What It Delivers
+It does more than generate an email. It runs a full loop:
 
-- Multi-agent workflow from company intelligence to recovery messaging
-- Deterministic monitoring and risk scoring logic for explainability
-- Structured logging for every agent decision
-- Professional dark dashboard for fast executive demos
-- Demo Mode for quota-safe walkthroughs without external API calls
+1. Understand account context
+2. Draft outreach
+3. Monitor engagement signals
+4. Detect risk
+5. Trigger recovery action
 
-## Workflow Pipeline
+The output of each run is both machine-usable and human-auditable: `final_state` + `logs`.
 
-1. Company Intelligence
-2. Initial Outreach
-3. Engagement Monitoring
-4. Risk Analysis
-5. Recovery Action
+![Dashboard](./assets/dashboard.png)
 
-Each execution returns:
+## Architecture Files
 
-- final_state: the fully updated workflow state
-- logs: ordered agent trace including input summary, output summary, and reasoning
+New architecture documentation is available in:
 
-## Project Structure
+- `docs/architecture/system-architecture.md`: complete architecture explanation
+- `docs/architecture/component-diagram.mmd`: component relationship diagram (Mermaid)
+- `docs/architecture/workflow-sequence.mmd`: execution sequence diagram (Mermaid)
 
-### Core
+## High-Level Idea
 
-- src/closeloop/state.py: shared workflow state schema and initializer
-- src/closeloop/orchestrator.py: sequential execution pipeline
-- src/closeloop/logging_layer.py: typed audit log structures
+Closeloop combines:
 
-### Agents
+- LLM-driven generation for research and messaging
+- Deterministic rules for monitoring and risk scoring
+- A strict orchestrated workflow to keep behavior consistent
+- Typed logs for decision traceability
 
-- src/closeloop/agents/research_agent.py: company and persona enrichment
-- src/closeloop/agents/outreach_agent.py: initial message generation
-- src/closeloop/agents/monitoring_module.py: deterministic inactivity simulation
-- src/closeloop/agents/risk_detection_agent.py: rule-based risk classification
-- src/closeloop/agents/recovery_agent.py: risk-adaptive follow-up generation
+This creates a reliable system that can be demoed safely and inspected clearly.
 
-### Interface and Tests
+## File Guide (What Each File Is Used For)
 
-- app.py: production-style Streamlit dashboard (Phase 9 UI)
-- tests/test_phase1_structure.py: integration-safe mocked orchestrator tests
+### Root
 
-## Current Implementation Status
+- `app.py`: Streamlit dashboard UI and run controls
+- `README.md`: project overview and file usage guide
+- `.env`: local environment variables (`GEMINI_API_KEY`, optional model)
+- `pyproject.toml`: package metadata and dependency config
+- `assets/dashboard.png`: dashboard image used in docs
+- `assets/architecture.png`: architecture image placeholder used in docs
 
-- Phase 1: scaffolding and state model complete
-- Phase 2: research agent complete
-- Phase 3: outreach agent complete
-- Phase 4: monitoring module complete
-- Phase 5: risk detection complete
-- Phase 6: recovery agent complete
-- Phase 7: orchestrator and audit logging complete
-- Phase 8: end-to-end demo flow complete
-- Phase 9: enterprise dashboard redesign complete
+### Core Workflow
 
-## UI Capabilities (Phase 9)
+- `src/closeloop/state.py`: shared `SalesWorkflowState` schema and initializer
+- `src/closeloop/logging_layer.py`: typed log entries and render helpers
+- `src/closeloop/orchestrator.py`: sequential execution pipeline
+- `src/closeloop/__init__.py`: package entry definitions
 
-- Dark, high-contrast dashboard with custom CSS design tokens
-- Clean card-based information hierarchy
-- Risk-emphasized analysis panel
-- Code-style email rendering for readability
-- Collapsible decision trace with per-agent detail cards
-- Highlighted summary banner for final outcome
-- Demo Mode toggle for no-quota walkthroughs
-- Live Mode for Gemini-backed execution when quota is available
+### Agent Modules
+
+- `src/closeloop/agents/research_agent.py`: account and persona enrichment
+- `src/closeloop/agents/outreach_agent.py`: initial outreach email generation
+- `src/closeloop/agents/monitoring_module.py`: engagement/inactivity updates
+- `src/closeloop/agents/risk_detection_agent.py`: deterministic risk classification
+- `src/closeloop/agents/recovery_agent.py`: recovery strategy and follow-up generation
+- `src/closeloop/agents/__init__.py`: agent package exports
+
+### Tests
+
+- `tests/test_phase1_structure.py`: structure and orchestrator behavior checks
+- `tests/test_agents_pipeline.py`: deterministic + mocked integration tests
+
+### Architecture Docs
+
+- `docs/architecture/system-architecture.md`: goals, components, data flow, decisions
+- `docs/architecture/component-diagram.mmd`: system component mapping
+- `docs/architecture/workflow-sequence.mmd`: step-by-step run order
+
+## System Flow
+
+1. UI receives `company_name`
+2. Orchestrator runs all agents in sequence
+3. Shared state is updated after each stage
+4. Logging captures summaries and decisions
+5. UI renders final outputs and trace
 
 ## Setup
 
-### Requirements
+1. Install the package
 
-- Python 3.13+
-- Streamlit
-- google-generativeai
-- python-dotenv
-- pytest
+```bash
+pip install -e .
+```
 
-### Environment
+2. Create/update `.env`
 
-Create or update .env in project root:
-
+```env
 GEMINI_API_KEY=your_key_here
 GEMINI_MODEL=gemini-2.0-flash
+```
 
-GEMINI_MODEL is optional.
+3. Start dashboard
 
-## Run the Dashboard
-
-1. Install dependencies in your virtual environment
-2. Start Streamlit:
-
+```bash
 streamlit run app.py
+```
 
-3. Enter a company name and click Run Workflow
+4. Run tests
 
-If API quota is exceeded, keep Demo Mode enabled for a full product walkthrough.
-
-## Run Tests
-
+```bash
 pytest -q
+```
 
-The tests are API-independent and should pass without external calls.
+## Notes
 
-## Programmatic Execution
-
-from closeloop.orchestrator import run_sales_workflow
-from closeloop.state import create_initial_state
-
-state = create_initial_state("Acme Corp")
-result = run_sales_workflow(state)
-
-print(result["final_state"])
-print(result["logs"])
-
-## Reliability Notes
-
-- If you see HTTP 429 quota errors, this is a Gemini project-level quota constraint.
-- API keys from the same project share quota pools.
-- Demo Mode is included to ensure uninterrupted demos.
-
-## Next Roadmap
-
-- Persistence layer for workflow history and analytics
-- CRM/webhook integration for production operations
-- Outcome feedback loop for strategy optimization
-- Comparative campaign benchmarking across segments
+- Use Demo Mode when quota is limited
+- Use Live Mode for Gemini-backed runs
+- Cached outputs can be reused for stable demos
 
 ## License
 

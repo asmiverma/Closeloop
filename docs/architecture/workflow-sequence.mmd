@@ -1,0 +1,37 @@
+sequenceDiagram
+    autonumber
+    participant User
+    participant UI as Streamlit UI
+    participant Orch as Orchestrator
+    participant State as Workflow State
+    participant R as Research Agent
+    participant O as Outreach Agent
+    participant M as Monitoring Module
+    participant D as Risk Detection Agent
+    participant RC as Recovery Agent
+
+    User->>UI: Run workflow with company name
+    UI->>Orch: run_sales_workflow(initial_state)
+
+    Orch->>R: run(state)
+    R-->>Orch: Enriched company context
+    Orch->>State: Update with research outputs
+
+    Orch->>O: run(state)
+    O-->>Orch: Initial outreach email
+    Orch->>State: Update email fields
+
+    Orch->>M: run(state)
+    M-->>Orch: Engagement status + inactivity days
+    Orch->>State: Update monitoring fields
+
+    Orch->>D: run(state)
+    D-->>Orch: Risk level + reason
+    Orch->>State: Update risk fields
+
+    Orch->>RC: run(state)
+    RC-->>Orch: Recovery strategy + follow-up email
+    Orch->>State: Update recovery outputs
+
+    Orch-->>UI: final_state + logs
+    UI-->>User: Dashboard sections + decision trace
