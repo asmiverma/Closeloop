@@ -1,0 +1,35 @@
+flowchart LR
+    UI[Streamlit Dashboard\napp.py]
+    ORCH[Workflow Orchestrator\nsrc/closeloop/orchestrator.py]
+    STATE[Shared Workflow State\nsrc/closeloop/state.py]
+    LOG[Structured Logging Layer\nsrc/closeloop/logging_layer.py]
+
+    R[Research Agent\nresearch_agent.py]
+    O[Outreach Agent\noutreach_agent.py]
+    M[Monitoring Module\nmonitoring_module.py]
+    D[Risk Detection Agent\nrisk_detection_agent.py]
+    RC[Recovery Agent\nrecovery_agent.py]
+
+    GEMINI[(Gemini API)]
+
+    UI --> ORCH
+    ORCH --> STATE
+    ORCH --> LOG
+
+    ORCH --> R
+    ORCH --> O
+    ORCH --> M
+    ORCH --> D
+    ORCH --> RC
+
+    R --> GEMINI
+    O --> GEMINI
+    RC --> GEMINI
+
+    R --> STATE
+    O --> STATE
+    M --> STATE
+    D --> STATE
+    RC --> STATE
+
+    LOG --> UI
