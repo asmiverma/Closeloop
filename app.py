@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import os
+
 import streamlit as st
+from dotenv import load_dotenv
 
 from closeloop.orchestrator import run_sales_workflow
 from closeloop.state import create_initial_state
 
+# Load environment variables from .env file
+load_dotenv()
 
 st.set_page_config(page_title="Closeloop", layout="wide")
 st.title("🎯 Closeloop Sales Workflow")
