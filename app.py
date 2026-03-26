@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
+import json
+import os
+from pathlib import Path
+from typing import Any
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -268,6 +272,34 @@ if "workflow_result" not in st.session_state:
     st.session_state.workflow_result = None
 
 
+CACHE_DIR = Path("artifacts") / "cache"
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _cache_key(provider: str, company_name: str) -> str:
+    safe_company = "".join(ch.lower() if ch.isalnum() else "_" for ch in company_name.strip())
+    safe_company = "_".join(part for part in safe_company.split("_") if part) or "unknown"
+    return f"{provider.lower()}_{safe_company}.json"
+
+
+def load_cached_result(provider: str, company_name: str) -> dict[str, Any] | None:
+    path = CACHE_DIR / _cache_key(provider, company_name)
+    if not path.exists():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(payload, dict) and "final_state" in payload and "logs" in payload:
+            return payload
+    except Exception:
+        return None
+    return None
+
+
+def save_cached_result(provider: str, company_name: str, result: dict[str, Any]) -> None:
+    path = CACHE_DIR / _cache_key(provider, company_name)
+    path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+
+
 def section_visible(selected: str, name: str) -> bool:
     return selected == "All Sections" or selected == name
 
@@ -302,9 +334,20 @@ def demo_payload(company_name: str) -> dict[str, object]:
 
 with st.sidebar:
     st.markdown("### Console Controls")
-    use_demo = st.toggle("Trial / Demo Mode", value=True)
+    execution_provider = st.selectbox(
+        "Execution Provider",
+        ["Trial / Demo", "Gemini (Live)"],
+        index=0,
+    )
+    use_cache_first = st.toggle("Use Local Cache First", value=False)
+    cache_fallback = st.toggle("Fallback To Cache On API Error", value=True)
     company_name = st.text_input("Company Name", value=MASTER_CONFIG["dashboard_config"]["company_name"])
     run_clicked = st.button("Run Workflow", use_container_width=True)
+
+    gemini_ok = bool(os.getenv("GEMINI_API_KEY", "").strip())
+    st.caption(f"Gemini Key: {'Configured' if gemini_ok else 'Missing'}")
+    cache_exists = load_cached_result("gemini", company_name) is not None
+    st.caption(f"Gemini Cache: {'Available' if cache_exists else 'Not found'}")
 
     st.markdown("---")
     selected_nav = st.radio("Navigation", MASTER_CONFIG["navigation"], label_visibility="collapsed")
@@ -316,7 +359,7 @@ st.markdown(f"<p class='title'>{MASTER_CONFIG['dashboard_config']['title']}</p>"
 st.markdown(f"<p class='subtitle'>{MASTER_CONFIG['dashboard_config']['subtitle']}</p>", unsafe_allow_html=True)
 st.markdown(f"<p class='version'>{MASTER_CONFIG['dashboard_config']['version']}</p>", unsafe_allow_html=True)
 
-if use_demo:
+if execution_provider == "Trial / Demo":
     st.markdown(
         f"<div class='trial-banner'>{MASTER_CONFIG['dashboard_config']['trial_banner']}</div>",
         unsafe_allow_html=True,
@@ -328,11 +371,28 @@ if run_clicked:
     else:
         try:
             with st.spinner("Running workflow..."):
-                if use_demo:
+                if execution_provider == "Trial / Demo":
                     result = demo_payload(company_name)
+                elif execution_provider == "Gemini (Live)":
+                    if not os.getenv("GEMINI_API_KEY", "").strip():
+                        raise RuntimeError("GEMINI_API_KEY is not set")
+                    if use_cache_first:
+                        cached = load_cached_result("gemini", company_name)
+                        if cached is not None:
+                            result = cached
+                            st.info("Loaded cached Gemini result from local storage.")
+                        else:
+                            state = create_initial_state(company_name)
+                            result = run_sales_workflow(state)
+                            save_cached_result("gemini", company_name, result)
+                            st.info("Saved latest Gemini result to local cache.")
+                    else:
+                        state = create_initial_state(company_name)
+                        result = run_sales_workflow(state)
+                        save_cached_result("gemini", company_name, result)
+                        st.info("Saved latest Gemini result to local cache.")
                 else:
-                    state = create_initial_state(company_name)
-                    result = run_sales_workflow(state)
+                    result = demo_payload(company_name)
 
             st.session_state.workflow_result = result
             st.session_state.last_run = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -341,6 +401,11 @@ if run_clicked:
             st.error(f"Workflow error: {msg[:220]}")
             if "quota" in msg.lower() or "429" in msg:
                 st.warning("API quota exceeded. Enable Trial / Demo Mode to continue with synthetic data.")
+            if execution_provider == "Gemini (Live)" and cache_fallback:
+                cached = load_cached_result("gemini", company_name)
+                if cached is not None:
+                    st.session_state.workflow_result = cached
+                    st.warning("API failed. Loaded cached Gemini result from local storage.")
 
 if st.session_state.workflow_result is None:
     st.markdown("<div class='hero'><div class='hero-k'>Deal Insight</div><div class='hero-v'>Ready for Analysis</div><div>Run workflow from the sidebar to generate insights.</div></div>", unsafe_allow_html=True)
@@ -387,7 +452,6 @@ else:
 
     if section_visible(selected_nav, "Company Intelligence"):
         st.markdown("<div class='section-title'>Company Intelligence</div>", unsafe_allow_html=True)
-        st.markdown("<div class='card'>", unsafe_allow_html=True)
         left, right = st.columns(2)
         with left:
             st.markdown("<div class='k'>Industry</div>", unsafe_allow_html=True)
@@ -409,11 +473,9 @@ else:
             st.metric("Annual Revenue", cfg["company_intelligence"]["key_metrics"]["annual_revenue"])
         with km3:
             st.metric("Sales Team", cfg["company_intelligence"]["key_metrics"]["sales_team_size"])
-        st.markdown("</div>", unsafe_allow_html=True)
 
     if section_visible(selected_nav, "Initial Outreach"):
         st.markdown("<div class='section-title'>Initial Outreach</div>", unsafe_allow_html=True)
-        st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.markdown("<div class='k'>Subject</div>", unsafe_allow_html=True)
         st.write(cfg["initial_outreach"]["subject"])
         st.markdown("<div class='k'>Email Body</div>", unsafe_allow_html=True)
@@ -423,11 +485,9 @@ else:
             st.metric("Word Count", cfg["initial_outreach"]["word_count"])
         with cta2:
             st.metric("CTA Strength", cfg["initial_outreach"]["cta_strength"])
-        st.markdown("</div>", unsafe_allow_html=True)
 
     if section_visible(selected_nav, "Risk Analysis"):
         st.markdown("<div class='section-title'>Risk Analysis</div>", unsafe_allow_html=True)
-        st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.markdown(f"<span class='risk-badge'>{cfg['risk_analysis']['risk_level']}</span>", unsafe_allow_html=True)
         st.write(cfg["risk_analysis"]["risk_reason"])
         st.caption(cfg["risk_analysis"]["risk_breakdown"])
@@ -435,11 +495,9 @@ else:
         with st.expander("Engagement Signals", expanded=False):
             for sig in cfg["risk_analysis"]["engagement_signals"]:
                 st.write(f"- {sig['signal']}: {sig['value'] if 'value' in sig else 'n/a'}")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     if section_visible(selected_nav, "Recovery Action"):
         st.markdown("<div class='section-title'>Recovery Action</div>", unsafe_allow_html=True)
-        st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.markdown("<div class='k'>Strategy</div>", unsafe_allow_html=True)
         st.markdown(f"<div class='v'>{final_state.get('recovery_strategy', 'N/A')}</div>", unsafe_allow_html=True)
         st.markdown("<div class='k'>New Subject</div>", unsafe_allow_html=True)
@@ -450,24 +508,20 @@ else:
         for item in cfg["recovery_action"]["key_changes_from_initial"]:
             st.write(f"- {item}")
         st.caption(cfg["recovery_action"]["projected_lift"])
-        st.markdown("</div>", unsafe_allow_html=True)
 
     if section_visible(selected_nav, "Decision Trace"):
         st.markdown("<div class='section-title'>Decision Trace</div>", unsafe_allow_html=True)
         with st.expander(cfg["decision_trace"]["title"], expanded=False):
             for row in cfg["decision_trace"]["log"]:
-                st.markdown("<div class='card'>", unsafe_allow_html=True)
                 st.markdown(f"<div class='v'>{row['agent']}</div>", unsafe_allow_html=True)
                 st.caption(f"Timestamp: {row['timestamp']}")
                 st.markdown("<div class='k'>Reasoning</div>", unsafe_allow_html=True)
                 st.write(row["reasoning"])
                 st.markdown("<div class='k'>Output</div>", unsafe_allow_html=True)
                 st.write(row["output"])
-                st.markdown("</div>", unsafe_allow_html=True)
 
     if section_visible(selected_nav, "Final Summary"):
         st.markdown("<div class='section-title'>Final Summary</div>", unsafe_allow_html=True)
-        st.markdown("<div class='summary'>", unsafe_allow_html=True)
         s1, s2 = st.columns(2)
         with s1:
             st.markdown("<div class='k'>Deal Status</div>", unsafe_allow_html=True)
@@ -479,4 +533,3 @@ else:
         st.write(cfg["final_summary"]["next_steps"])
         st.caption(f"Overall confidence: {cfg['final_summary']['overall_confidence']:.2f}")
         st.success(cfg["final_summary"]["demo_message"])
-        st.markdown("</div>", unsafe_allow_html=True)

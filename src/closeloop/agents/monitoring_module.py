@@ -4,5 +4,7 @@ from closeloop.state import SalesWorkflowState
 
 
 def run_monitoring_module(state: SalesWorkflowState) -> SalesWorkflowState:
-    """Phase 1 stub: simulate inactivity in later phases without LLM usage."""
-    raise NotImplementedError("Phase 4 will implement deterministic monitoring logic.")
+    """Apply deterministic inactivity simulation without using an LLM."""
+    state["last_contact_days"] = 10
+    state["engagement_status"] = "NO_RESPONSE"
+    return state
